@@ -1,5 +1,6 @@
 import type { RawUsuario } from "@/models/Usuario";
 import { Storage } from "@/utils/storage";
+import axios from "axios";
 
 export const TOKEN_KEY = "@apivenda:token";
 export const REFRESH_KEY = "@apivenda:refresh";
@@ -65,6 +66,13 @@ class TokenManager {
     this.cancelRefreshTimer();
   }
 
+  clearSession(): void {
+    this.state = null;
+    Storage.clearAuth();
+    Storage.remove(EXPIRES_KEY);
+    this.cancelRefreshTimer();
+  }
+
   getAccessToken(): string | null {
     return this.state?.accessToken ?? null;
   }
@@ -100,5 +108,84 @@ class TokenManager {
     const refresToken = this.getRefreshToken();
 
     if (!refresToken) throw new Error("Sem refres token");
+
+    const { data } = await axios.post<SessionResponse>(
+      `${this.baseURL}/auth/refresh`,
+      { refresToken },
+    );
+
+    this.state = {
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken,
+      expiresAt: Date.now() + data.expiresIn,
+      user: data.data,
+    };
+
+    Storage.set(TOKEN_KEY, data.accessToken);
+    Storage.set(REFRESH_KEY, data.refreshToken);
+    Storage.set(EXPIRES_KEY, this.state.expiresAt);
+    Storage.set(USER_KEY, data.data);
+
+    this.scheduleRefresh();
+    this.emit("session:refreshed");
+
+    return data.accessToken;
+  }
+
+  private scheduleRefresh(): void {
+    this.cancelRefreshTimer();
+    if (!this.state) return;
+
+    const msUntilExpiry = this.state.expiresAt - Date.now();
+    if (msUntilExpiry <= 0) {
+      void this.refreshOrExpire();
+      return;
+    }
+
+    const threshold = Math.min(120_000, Math.floor(msUntilExpiry * 0.5));
+    const delay = Math.max(threshold, msUntilExpiry - 120_000);
+
+    this.refreshTimer = setTimeout(() => {
+      void this.refreshOrExpire();
+    }, delay);
+  }
+
+  private async refreshOrExpire(): Promise<void> {
+    try {
+      await this.refresh();
+    } catch {
+      this.clearSession();
+      this.emit("session:expired");
+    }
+  }
+
+  private cancelRefreshTimer(): void {
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
+  }
+
+  private listenToOtherTabs(): void {
+    if (typeof window === "undefined") return;
+
+    window.addEventListener("storage", (e) => {
+      if (e.key === TOKEN_KEY || e.key === null) return;
+
+      this.hydrate();
+      if (this.state) this.emit("session:refreshed");
+      else this.emit("session:expired");
+    });
+  }
+
+  on(listener: (event: TokenEvent) => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  private emit(event: TokenEvent): void {
+    this.listeners.forEach((l) => l(event));
   }
 }
+
+export const tokenManager = new TokenManager();

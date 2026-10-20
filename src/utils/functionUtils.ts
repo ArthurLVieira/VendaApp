@@ -36,3 +36,57 @@ export function toLocalDateISO(date: Date): string {
 }
 
 export const onlyDigits = (v: string) => v.replace(/\D/g, "");
+
+export function toNumber(value: string | number | null | undefined): number {
+  if (value == null) return 0;
+  if (typeof value === "number") return value;
+  const n = parseFloat(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+export function formatBRL(value: string | number | null | undefined): string {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(toNumber(value));
+}
+
+export function formatQuantity(
+  value: string | number | null | undefined,
+): string {
+  return new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 3,
+  }).format(toNumber(value));
+}
+
+export function maskCurrency(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return "";
+  const padded = digits.padStart(3, "0");
+  const intPart = padded.slice(0, -2);
+  const decPart = padded.slice(-2);
+  const intFormatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `${intFormatted},${decPart}`;
+}
+
+export function parseCurrencyToBigDecimal(masked: string): string {
+  const clean = masked.replace(/[^\d,]/g, "").replace(",", ".");
+  if (!clean) return "0.00";
+  const n = parseFloat(clean);
+  return Number.isFinite(n) ? n.toFixed(2) : "0.00";
+}
+
+export function parseDecimalToBigDecimal(masked: string, decimals = 3): string {
+  const clean = masked
+    .replace(/[^\d,.]/g, "")
+    .replace(/\./g, "")
+    .replace(",", ".");
+  if (!clean) return "0";
+  const n = parseFloat(clean);
+  return Number.isFinite(n) ? n.toFixed(decimals) : "0";
+}
+
+export function toBigDecimal(value: number, decimals = 2): string {
+  return value.toFixed(decimals);
+}

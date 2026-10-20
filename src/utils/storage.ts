@@ -38,8 +38,11 @@ export const Storage = {
     localStorage.clear();
   },
   clearAuth(): void {
-    ["@apivenda:token", "@apivenda:refresh", "@apivenda:user"].forEach((k) =>
-      this.remove(k),
-    );
+    [
+      "@apivenda:token",
+      "@apivenda:refresh",
+      "@apivenda:expiresAt",
+      "@apivenda:user",
+    ].forEach((k) => this.remove(k));
   },
 };
