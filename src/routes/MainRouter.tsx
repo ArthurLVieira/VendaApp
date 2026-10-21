@@ -8,6 +8,38 @@ import { Suspense } from "react";
 import { FullPageSpinner } from "@/components/ui/FullPageSpinner";
 import Dashboard from "@/pages/Dashboard";
 import ClientesPage from "@/pages/clientes/ClientesPage";
+import { useSessionHeartbeat } from "@/hooks/useSessionHeartbeat";
+import { SessionGuard } from "@/components/layout/SessionGuard";
+
+function AppInner() {
+  useSessionHeartbeat();
+  return (
+    <SessionGuard>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/clientes"
+          element={
+            <ProtectedRoute>
+              <ClientesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </SessionGuard>
+  );
+}
 
 export default function MainRouter() {
   return (
@@ -19,28 +51,7 @@ export default function MainRouter() {
         }}
       />
       <Suspense fallback={<FullPageSpinner message="Carregando..." />}>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard/clientes"
-            element={
-              <ProtectedRoute>
-                <ClientesPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <AppInner />
       </Suspense>
     </BrowserRouter>
   );
