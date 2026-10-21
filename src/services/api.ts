@@ -3,10 +3,10 @@ import axios, {
   type AxiosInstance,
   type InternalAxiosRequestConfig,
 } from "axios";
-import { Storage } from "@/utils/storage";
 import { AuthRepository } from "./repository/AuthRepository";
 import { RegisterRepository } from "./repository/RegisterRepository";
 import { ClienteRepository } from "./repository/ClienteRepository";
+import { tokenManager } from "./auth/tokenManager";
 
 export const TOKEN_KEY = "@apivenda:token";
 export const USER_KEY = "@apivenda:user";
@@ -17,8 +17,28 @@ export const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-api.interceptors.request.use((config) => {
-  const token = Storage.get<string>(TOKEN_KEY);
+api.interceptors.request.use(async (config) => {
+  const url = config.url ?? "";
+
+  const isPublic =
+    url.includes("/auth/loin") ||
+    url.includes("/auth/refresh") ||
+    url.includes("/register");
+
+  if (isPublic || !tokenManager.isAuthenticated()) {
+    return config;
+  }
+
+  if (tokenManager.isExpiringSoon()) {
+    try {
+      const newToken = await tokenManager.refresh();
+      config.headers.Authorization = `Bearer ${newToken}`;
+      return config;
+    } catch {}
+  }
+
+  const token = tokenManager.getAccessToken();
+
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -27,29 +47,13 @@ interface RetryableConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
 }
 
-let refreshPromise: Promise<string> | null = null;
-
-async function performRefresh() {
-  const refreshToken = Storage.get<string>(REFRESH_KEY);
-  if (!refreshToken) throw new Error("Sem refresh token");
-
-  const { data } = await axios.post(`${api.defaults.baseURL}/auth/refresh`, {
-    refreshToken,
-  });
-
-  Storage.set(TOKEN_KEY, data.accessToken);
-  Storage.set(REFRESH_KEY, data.refreshToken);
-  if (data.data) Storage.set(USER_KEY, data.data);
-
-  return data.accessToken as string;
-}
-
 api.interceptors.response.use(
   (r) => r,
   async (error: AxiosError) => {
     const original = error.config as RetryableConfig | undefined;
     const status = error.response?.status;
     const url = original?.url ?? "";
+
     const isAuthRoute =
       url.includes("/auth/login") ||
       url.includes("/auth/refresh") ||
@@ -57,16 +61,14 @@ api.interceptors.response.use(
 
     if (status === 401 && original && !original._retry && !isAuthRoute) {
       original._retry = true;
+
       try {
-        refreshPromise ??= performRefresh().finally(() => {
-          refreshPromise = null;
-        });
-        const newToken = await refreshPromise;
+        const newToken = await tokenManager.refresh();
         original.headers = original.headers ?? {};
         original.headers.Authorization = `Bearer ${newToken}`;
         return api(original);
       } catch {
-        Storage.clearAuth();
+        tokenManager.clearSession();
         if (!location.pathname.startsWith("/login")) location.assign("/login");
       }
     }

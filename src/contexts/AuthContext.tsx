@@ -1,15 +1,9 @@
 import { Empresa } from "@/models/Empresa";
 import { Role } from "@/models/Role";
 import { Usuario, type RawUsuario } from "@/models/Usuario";
-import {
-  authRepository,
-  REFRESH_KEY,
-  registerRepository,
-  TOKEN_KEY,
-  USER_KEY,
-} from "@/services/api";
+import { authRepository, registerRepository } from "@/services/api";
+import { tokenManager } from "@/services/auth/tokenManager";
 import type { LoginRequest, RegisterRequest } from "@/types/api";
-import { Storage } from "@/utils/storage";
 import React, {
   createContext,
   useCallback,
@@ -38,11 +32,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = Storage.get<string>(TOKEN_KEY);
-    const rawUser = Storage.get<RawUsuario>(USER_KEY);
+    const boot = async () => {
+      if (!tokenManager.isAuthenticated()) {
+        setLoading(false);
+        return;
+      }
 
-    if (token && rawUser) setUser(Usuario.fromRaw(rawUser));
-    setLoading(false);
+      const raw = tokenManager.getUser();
+      if (raw) setUser(Usuario.fromRaw(raw));
+
+      if (tokenManager.isExpiringSoon(0)) {
+        try {
+          await tokenManager.refresh();
+          const refreshed = tokenManager.getUser();
+          if (refreshed) setUser(Usuario.fromRaw(refreshed));
+        } catch {
+          tokenManager.clearSession();
+          setUser(null);
+        }
+      }
+
+      setLoading(false);
+    };
+
+    void boot();
+  });
+
+  useEffect(() => {
+    const unsubscribe = tokenManager.on((event) => {
+      if (event === "session:refreshed") {
+        const raw = tokenManager.getUser();
+        if (raw) setUser(Usuario.fromRaw(raw));
+        else if (event === "session:refreshed") {
+          setUser(null);
+        }
+      }
+    });
+
+    return unsubscribe;
   }, []);
 
   const signIn = useCallback(
@@ -55,12 +82,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         roles: Role.fromRawList(data.data.roles),
         empresa: Empresa.fromRaw(data.data.empresa),
       };
-      console.log("📤 Enviando para API:", rawUser);
 
-      Storage.setRemembered(Boolean(rememberMe));
-      Storage.set(TOKEN_KEY, data.accessToken);
-      Storage.set(REFRESH_KEY, data.refreshToken);
-      Storage.set(USER_KEY, data.data);
+      tokenManager.setSession(
+        {
+          accessToken: data.accessToken,
+          refreshToken: data.refreshToken,
+          expiresIn: data.expiresIn,
+          data: rawUser,
+        },
+        Boolean(rememberMe),
+      );
+
       setUser(Usuario.fromRaw(rawUser));
     },
     [],
@@ -70,34 +102,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await registerRepository.register(payload);
   }, []);
 
-  const refreshSession = useCallback(async (): Promise<boolean> => {
-    const refreshToken = Storage.get<string>(REFRESH_KEY);
-
-    if (!refreshToken) return false;
-
-    try {
-      const data = await authRepository.refresh({ refreshToken });
-      Storage.set(TOKEN_KEY, data.accessToken);
-      Storage.set(REFRESH_KEY, data.refreshToken);
-      Storage.set(USER_KEY, data.data);
-      setUser(Usuario.fromRaw(data.data));
-
-      return true;
-    } catch {
-      Storage.clearAuth();
-      setUser(null);
-      return false;
-    }
-  }, []);
-
   const signOut = useCallback(async () => {
     try {
       await authRepository.logout();
     } catch {}
 
-    Storage.clearAuth();
-    Storage.setRemembered(false);
+    tokenManager.clearSession();
     setUser(null);
+  }, []);
+
+  const refreshSession = useCallback(async (): Promise<boolean> => {
+    try {
+      await tokenManager.refresh();
+      const raw = tokenManager.getUser();
+      if (raw) setUser(Usuario.fromRaw(raw));
+
+      return true;
+    } catch {
+      tokenManager.clearSession();
+      setUser(null);
+      return false;
+    }
   }, []);
 
   const value = useMemo(
