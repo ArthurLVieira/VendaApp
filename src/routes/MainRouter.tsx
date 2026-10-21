@@ -10,9 +10,15 @@ import Dashboard from "@/pages/Dashboard";
 import ClientesPage from "@/pages/clientes/ClientesPage";
 import { useSessionHeartbeat } from "@/hooks/useSessionHeartbeat";
 import { SessionGuard } from "@/components/layout/SessionGuard";
+import { useSessionWarning } from "@/hooks/useSessionWarning";
+import { SessionWarningModal } from "@/components/session/SessionWarningModal";
+import { SessionFloatingBadge } from "@/components/session/SessionFloatingBadge";
+import { RouteErrorBoundary } from "@/components/layout/RouteErrorBoundary";
 
 function AppInner() {
   useSessionHeartbeat();
+  const session = useSessionWarning();
+
   return (
     <SessionGuard>
       <Routes>
@@ -37,6 +43,26 @@ function AppInner() {
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+
+      {session.isWarning &&
+        session.modalOpen &&
+        session.remainingMs !== null && (
+          <SessionWarningModal
+            open={session.modalOpen}
+            remainingMs={session.remainingMs}
+            refreshing={session.refreshing}
+            onContinue={session.refresh}
+            onLogout={session.logout}
+            onMinimize={session.minimize}
+          />
+        )}
+
+      {session.floatingVisible && session.remainingMs !== null && (
+        <SessionFloatingBadge
+          remainingMs={session.remainingMs}
+          onClick={session.expand}
+        />
+      )}
     </SessionGuard>
   );
 }
@@ -51,7 +77,9 @@ export default function MainRouter() {
         }}
       />
       <Suspense fallback={<FullPageSpinner message="Carregando..." />}>
-        <AppInner />
+        <RouteErrorBoundary>
+          <AppInner />
+        </RouteErrorBoundary>
       </Suspense>
     </BrowserRouter>
   );

@@ -9,6 +9,7 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -28,49 +29,67 @@ interface AuthContextValue {
 export const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<Usuario | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<Usuario | null>(() => {
+    const raw = tokenManager.getUser();
+    return raw ? Usuario.fromRaw(raw) : null;
+  });
+
+  const [loading, setLoading] = useState<boolean>(() =>
+    tokenManager.isAuthenticated(),
+  );
+
+  const lastRawJsonRef = useRef<string | null>(null);
+
+  const applyRawUser = useCallback((raw: RawUsuario | null) => {
+    const json = raw ? JSON.stringify(raw) : null;
+    if (json === lastRawJsonRef.current) return;
+    lastRawJsonRef.current = json;
+    setUser(raw ? Usuario.fromRaw(raw) : null);
+  }, []);
 
   useEffect(() => {
+    let cancelled = false;
+
     const boot = async () => {
-      if (!tokenManager.isAuthenticated()) {
-        setLoading(false);
-        return;
-      }
-
-      const raw = tokenManager.getUser();
-      if (raw) setUser(Usuario.fromRaw(raw));
-
-      if (tokenManager.isExpiringSoon(0)) {
-        try {
-          await tokenManager.refresh();
-          const refreshed = tokenManager.getUser();
-          if (refreshed) setUser(Usuario.fromRaw(refreshed));
-        } catch {
-          tokenManager.clearSession();
-          setUser(null);
+      try {
+        if (!tokenManager.isAuthenticated()) {
+          if (!cancelled) setLoading(false);
+          return;
         }
-      }
 
-      setLoading(false);
+        if (tokenManager.isExpiringSoon(0)) {
+          try {
+            await tokenManager.refresh();
+          } catch {
+            tokenManager.clearSession();
+          }
+        }
+
+        if (!cancelled) applyRawUser(tokenManager.getUser());
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     };
 
     void boot();
-  });
+    return () => {
+      cancelled = true;
+    };
+  }, [applyRawUser]);
 
   useEffect(() => {
     const unsubscribe = tokenManager.on((event) => {
       if (event === "session:refreshed") {
-        const raw = tokenManager.getUser();
-        if (raw) setUser(Usuario.fromRaw(raw));
-        else if (event === "session:refreshed") {
-          setUser(null);
-        }
+        applyRawUser(tokenManager.getUser());
+      } else if (event === "session:expired") {
+        lastRawJsonRef.current = null;
+        setUser(null);
       }
     });
-
-    return unsubscribe;
-  }, []);
+    return () => {
+      unsubscribe();
+    };
+  }, [applyRawUser]);
 
   const signIn = useCallback(
     async ({ rememberMe, ...credentials }: SignInPayload) => {
@@ -93,9 +112,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         Boolean(rememberMe),
       );
 
-      setUser(Usuario.fromRaw(rawUser));
+      lastRawJsonRef.current = null;
+      applyRawUser(rawUser);
     },
-    [],
+    [applyRawUser],
   );
 
   const signUp = useCallback(async (payload: RegisterRequest) => {
@@ -108,24 +128,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {}
 
     tokenManager.clearSession();
+    lastRawJsonRef.current = null;
     setUser(null);
   }, []);
 
   const refreshSession = useCallback(async (): Promise<boolean> => {
     try {
       await tokenManager.refresh();
-      const raw = tokenManager.getUser();
-      if (raw) setUser(Usuario.fromRaw(raw));
+      applyRawUser(tokenManager.getUser());
 
       return true;
     } catch {
       tokenManager.clearSession();
+      lastRawJsonRef.current = null;
       setUser(null);
       return false;
     }
-  }, []);
+  }, [applyRawUser]);
 
-  const value = useMemo(
+  const value = useMemo<AuthContextValue>(
     () => ({ user, loading, signIn, signUp, signOut, refreshSession }),
     [user, loading, signIn, signUp, signOut, refreshSession],
   );

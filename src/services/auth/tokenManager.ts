@@ -132,24 +132,6 @@ class TokenManager {
     return data.accessToken;
   }
 
-  private scheduleRefresh(): void {
-    this.cancelRefreshTimer();
-    if (!this.state) return;
-
-    const msUntilExpiry = this.state.expiresAt - Date.now();
-    if (msUntilExpiry <= 0) {
-      void this.refreshOrExpire();
-      return;
-    }
-
-    const threshold = Math.min(120_000, Math.floor(msUntilExpiry * 0.5));
-    const delay = Math.max(threshold, msUntilExpiry - 120_000);
-
-    this.refreshTimer = setTimeout(() => {
-      void this.refreshOrExpire();
-    }, delay);
-  }
-
   private async refreshOrExpire(): Promise<void> {
     try {
       await this.refresh();
@@ -185,6 +167,27 @@ class TokenManager {
 
   private emit(event: TokenEvent): void {
     this.listeners.forEach((l) => l(event));
+  }
+
+  getRemainigMs(): number | null {
+    if (!this.state) return null;
+    return this.state.expiresAt - Date.now();
+  }
+
+  private scheduleRefresh(): void {
+    this.cancelRefreshTimer();
+    if (!this.state) return;
+
+    const msUntilExpiry = this.state.expiresAt - Date.now();
+    if (msUntilExpiry <= 0) {
+      void this.refreshOrExpire();
+      return;
+    }
+
+    const delay = Math.max(0, msUntilExpiry - 10_000);
+    this.refreshTimer = setTimeout(() => {
+      void this.refreshOrExpire();
+    }, delay);
   }
 }
 

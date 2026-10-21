@@ -95,14 +95,6 @@ export interface ClientePayload {
   dataNascimento?: string;
 }
 
-export interface RawProduto {
-  id: number;
-  descricao: string;
-  codigoDeBarras?: string | null;
-  preco: string | number;
-  quantidade: string | number;
-}
-
 export interface ProdutoPayload {
   descricao: string;
   codigoDeBarras?: string;
