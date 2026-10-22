@@ -14,6 +14,7 @@ import { useSessionWarning } from "@/hooks/useSessionWarning";
 import { SessionWarningModal } from "@/components/session/SessionWarningModal";
 import { SessionFloatingBadge } from "@/components/session/SessionFloatingBadge";
 import { RouteErrorBoundary } from "@/components/layout/RouteErrorBoundary";
+import ProdutosPage from "@/pages/produtos/ProdutosPage";
 
 function AppInner() {
   useSessionHeartbeat();
@@ -38,6 +39,14 @@ function AppInner() {
           element={
             <ProtectedRoute>
               <ClientesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/produtos"
+          element={
+            <ProtectedRoute>
+              <ProdutosPage />
             </ProtectedRoute>
           }
         />

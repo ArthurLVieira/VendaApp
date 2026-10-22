@@ -30,6 +30,10 @@ export class Produto extends Entity<RawProduto> {
     return toNumber(this.quantidade);
   }
 
+  get precoFormatado(): string {
+    return formatBRL(this.preco);
+  }
+
   get quantidadeFormatada(): string {
     return formatBRL(this.quantidade);
   }

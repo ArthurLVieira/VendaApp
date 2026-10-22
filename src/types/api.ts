@@ -95,6 +95,13 @@ export interface ClientePayload {
   dataNascimento?: string;
 }
 
+export interface ProdutoSearchParams {
+  search?: string;
+  page?: number;
+  size?: number;
+  sort?: string;
+}
+
 export interface ProdutoPayload {
   descricao: string;
   codigoDeBarras?: string;

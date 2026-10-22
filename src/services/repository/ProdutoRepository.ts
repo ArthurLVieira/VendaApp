@@ -5,6 +5,7 @@ import type {
   ApiResponse,
   PageModel,
   ProdutoPayload,
+  ProdutoSearchParams,
   RawPage,
 } from "@/types/api";
 

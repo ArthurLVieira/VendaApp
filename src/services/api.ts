@@ -7,6 +7,7 @@ import { AuthRepository } from "./repository/AuthRepository";
 import { RegisterRepository } from "./repository/RegisterRepository";
 import { ClienteRepository } from "./repository/ClienteRepository";
 import { tokenManager } from "./auth/tokenManager";
+import { ProdutoRepository } from "./repository/ProdutoRepository";
 
 export const TOKEN_KEY = "@apivenda:token";
 export const USER_KEY = "@apivenda:user";
@@ -81,3 +82,4 @@ export type ApiInstance = AxiosInstance;
 export const authRepository = new AuthRepository(api);
 export const registerRepository = new RegisterRepository(api);
 export const clienteRespository = new ClienteRepository(api);
+export const produtoRepository = new ProdutoRepository(api);
