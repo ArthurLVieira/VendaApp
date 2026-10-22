@@ -32,7 +32,7 @@ export function Header() {
           </span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-3">
+        <nav className="hidden md:flex items-center gap-5">
           <ThemeToggle />
           {user ? (
             <>

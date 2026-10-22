@@ -61,12 +61,18 @@ export function formatQuantity(
 }
 
 export function maskCurrency(raw: string): string {
-  const digits = raw.replace(/\D/g, "");
+  let digits = raw.replace(/\D/g, "");
+
+  digits = digits.replace(/^0+(?=\d{3,})/, "");
+
   if (!digits) return "";
-  const padded = digits.padStart(3, "0");
-  const intPart = padded.slice(0, -2);
-  const decPart = padded.slice(-2);
+
+  digits = digits.padStart(3, "0");
+
+  const intPart = digits.slice(0, -2);
+  const decPart = digits.slice(-2);
   const intFormatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
   return `${intFormatted},${decPart}`;
 }
 
