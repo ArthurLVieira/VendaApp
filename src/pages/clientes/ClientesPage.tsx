@@ -213,10 +213,10 @@ export default function ClientesPage() {
                         </div>
                       </td>
                       <td className="px-5 py-3 text-neutral-600 dark:text-neutral-400">
-                        {c.cpfFormatado}
+                        {c.cpfCnpjFormatado}
                       </td>
                       <td className="px-5 py-3 text-neutral-600 dark:text-neutral-400">
-                        {c.dataNascimentoFormatado}
+                        {c.dataNascimentoCriacaoFormatado}
                         {c.idade !== undefined && (
                           <span className="text-xs text-neutral-400 dark:text-neutral-500 ml-1">
                             ({c.idade} anos)
@@ -275,7 +275,7 @@ export default function ClientesPage() {
                         {c.nomeCompleto}
                       </p>
                       <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                        {c.cpfFormatado}
+                        {c.cpfCnpjFormatado}
                         {c.idade !== undefined && ` · ${c.idade} anos`}
                       </p>
                     </div>

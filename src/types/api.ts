@@ -84,15 +84,19 @@ export interface PageModel<T> {
 
 export interface ClienteSearchParams {
   search?: string;
+  fornecedor?: boolean;
   page?: number;
   size?: number;
   sort?: string;
 }
 
 export interface ClientePayload {
-  nomeCompleto: string;
-  cpf?: string;
-  dataNascimento?: string;
+  nomeRazao: string;
+  cpfCnpj: string;
+  nomeFantazia?: string;
+  dataNascimentoCriacao?: string;
+  fornecedor?: boolean;
+  status?: boolean;
 }
 
 export interface ProdutoSearchParams {

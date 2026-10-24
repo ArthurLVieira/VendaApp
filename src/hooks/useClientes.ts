@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const DEFAULT_PARAMS: ClienteSearchParams = {
   search: "",
+  fornecedor: false,
   page: 0,
   size: 10,
   sort: "sort=nomeCompleto,asc",
@@ -23,22 +24,22 @@ export function useCliente(initialParams?: Partial<ClienteSearchParams>) {
   const [data, setData] = useState<PageModel<Cliente> | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const reqCodeRef = useRef(0);
+  const reqIdRef = useRef(0);
 
   const fetchList = useCallback(async () => {
-    const code = ++reqCodeRef.current;
+    const id = ++reqIdRef.current;
     setLoading(true);
     setError(null);
 
     try {
       const result = await clienteRespository.search(params);
-      if (code === reqCodeRef.current) setData(result);
+      if (id === reqIdRef.current) setData(result);
     } catch (e) {
-      if (code === reqCodeRef.current)
-        if (code === reqCodeRef.current)
-          setError(extractApiError(e, "Erro ao carregar clientes"));
+      if (id === reqIdRef.current)
+        if (id === reqIdRef.current)
+          setError(extractApiError(e, "Erro ao carregar registros"));
     } finally {
-      if (code === reqCodeRef.current) setLoading(false);
+      if (id === reqIdRef.current) setLoading(false);
     }
   }, [params]);
 
@@ -76,6 +77,24 @@ export function useCliente(initialParams?: Partial<ClienteSearchParams>) {
     [fetchList],
   );
 
+  const toggleFornecedor = useCallback(
+    async (id: number) => {
+      const cliente = await clienteRespository.switchFornecedor(id);
+      await fetchList();
+      return cliente;
+    },
+    [fetchList],
+  );
+
+  const toggleStatus = useCallback(
+    async (id: number) => {
+      const cliente = await clienteRespository.switchStatus(id);
+      await fetchList();
+      return cliente;
+    },
+    [fetchList],
+  );
+
   return {
     data,
     loading,
@@ -86,5 +105,7 @@ export function useCliente(initialParams?: Partial<ClienteSearchParams>) {
     create,
     update,
     remove,
+    toggleStatus,
+    toggleFornecedor,
   };
 }
