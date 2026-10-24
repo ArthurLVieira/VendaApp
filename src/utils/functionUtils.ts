@@ -61,12 +61,18 @@ export function formatQuantity(
 }
 
 export function maskCurrency(raw: string): string {
-  const digits = raw.replace(/\D/g, "");
+  let digits = raw.replace(/\D/g, "");
+
+  digits = digits.replace(/^0+(?=\d{3,})/, "");
+
   if (!digits) return "";
-  const padded = digits.padStart(3, "0");
-  const intPart = padded.slice(0, -2);
-  const decPart = padded.slice(-2);
+
+  digits = digits.padStart(3, "0");
+
+  const intPart = digits.slice(0, -2);
+  const decPart = digits.slice(-2);
   const intFormatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
   return `${intFormatted},${decPart}`;
 }
 
@@ -89,4 +95,23 @@ export function parseDecimalToBigDecimal(masked: string, decimals = 3): string {
 
 export function toBigDecimal(value: number, decimals = 2): string {
   return value.toFixed(decimals);
+}
+
+export function stripCpfCnpj(value: string): string {
+  return onlyDigits(value);
+}
+
+export function isCpf(value: string): boolean {
+  return onlyDigits(value).length === 11;
+}
+
+export function isCnpj(value: string): boolean {
+  return onlyDigits(value).length === 14;
+}
+
+export function labelDocument(value: string): "CPF" | "CNPJ" | "CPF/CNPJ" {
+  const n = onlyDigits(value).length;
+  if (n <= 11) return "CPF";
+  if (n === 14) return "CNPJ";
+  return "CPF/CNPJ";
 }

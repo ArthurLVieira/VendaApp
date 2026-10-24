@@ -11,9 +11,11 @@ import {
 
 const SORTABLE_FIELDS = [
   "id",
-  "nomeCompleto",
-  "cpf",
-  "dataNascimento",
+  "nomeRazao",
+  "cpfCnpj",
+  "dataNascimentoCriacao",
+  "status",
+  "fornecedor",
 ] as const;
 type SortField = (typeof SORTABLE_FIELDS)[number];
 
@@ -37,14 +39,15 @@ export class ClienteRepository extends BaseRepository {
   }
 
   async search(params: ClienteSearchParams = {}): Promise<PageModel<Cliente>> {
-    const query = new URLSearchParams();
-    if (params.search?.trim()) query.set("search", params.search.trim());
-    query.set("page", String(params.page ?? 0));
-    query.set("size", String(params.size ?? 10));
-    query.set("sort", normalizeSort(params.sort));
+    const searchParams = new URLSearchParams();
+    if (params.search?.trim()) searchParams.set("search", params.search.trim());
+    searchParams.set("fornecedor", String(params.fornecedor ?? false));
+    searchParams.set("page", String(params.page ?? 0));
+    searchParams.set("size", String(params.size ?? 10));
+    searchParams.set("sort", normalizeSort(params.sort));
 
     const response = await this.get<ApiResponse<RawPage<RawCliente>>>(
-      `?${query}`,
+      `?${searchParams}`,
     );
     const page = response.data;
 
@@ -79,5 +82,21 @@ export class ClienteRepository extends BaseRepository {
 
   async deleteById(id: number): Promise<void> {
     await this.delete<ApiResponse<void>>(`/${id}`);
+  }
+
+  async switchFornecedor(id: number): Promise<Cliente> {
+    const response = await this.patch<ApiResponse<RawCliente>>(
+      `/switch/fornecedor/${id}`,
+    );
+
+    return Cliente.fromRaw(response.data);
+  }
+
+  async switchStatus(id: number): Promise<Cliente> {
+    const response = await this.patch<ApiResponse<RawCliente>>(
+      `/switch/status/${id}`,
+    );
+
+    return Cliente.fromRaw(response.data);
   }
 }

@@ -42,6 +42,20 @@ export abstract class BaseRepository {
     return data;
   }
 
+  protected async patch<T, B = unknown>(
+    url: string,
+    body?: B,
+    config?: AxiosRequestConfig,
+  ): Promise<T> {
+    const { data } = await this.http.patch<T>(
+      `${this.basePath}${url}`,
+      body,
+      config,
+    );
+
+    return data;
+  }
+
   protected async delete<T>(
     url: string,
     config?: AxiosRequestConfig,
