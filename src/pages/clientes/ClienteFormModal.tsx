@@ -5,9 +5,14 @@ import type { Cliente } from "@/models/Cliente";
 import { clienteSchema, type ClienteFormData } from "@/schemas/clienteSchema";
 import type { ClientePayload } from "@/types/api";
 import { extractApiError } from "@/utils/apiError";
-import { maskCpf, onlyDigits, toLocalDateISO } from "@/utils/functionUtils";
+import {
+  maskCpf,
+  maskCpfCnpj,
+  onlyDigits,
+  toLocalDateISO,
+} from "@/utils/functionUtils";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Calendar, IdCard, User } from "lucide-react";
+import { Building2, Calendar, IdCard, Sparkles } from "lucide-react";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
@@ -16,6 +21,7 @@ interface ClienteFormModalProps {
   open: boolean;
   onClose: () => void;
   cliente?: Cliente | null;
+  fornecedorContext?: boolean;
   onSubmit: (payload: ClientePayload) => Promise<void>;
 }
 
@@ -23,9 +29,17 @@ export function ClienteFormModal({
   open,
   onClose,
   cliente,
+  fornecedorContext = false,
   onSubmit,
 }: ClienteFormModalProps) {
   const isEdit = Boolean(cliente);
+
+  const titulo = isEdit
+    ? `Editar ${cliente?.fornecedor ? "fornecedor" : "cliente"}`
+    : fornecedorContext
+      ? "Novo fornecedor"
+      : "Novo cliente";
+
   const {
     register,
     handleSubmit,
@@ -35,32 +49,41 @@ export function ClienteFormModal({
     formState: { errors, isSubmitting },
   } = useForm<ClienteFormData>({
     resolver: zodResolver(clienteSchema),
-    defaultValues: { nomeCompleto: "", cpf: "", dataNascimento: "" },
+    defaultValues: {
+      nomeRazao: "",
+      cpfCnpj: "",
+      nomeFantazia: "",
+      dataNascimentoCriacao: "",
+    },
   });
 
   useEffect(() => {
     if (!open) return;
     reset({
-      nomeCompleto: cliente?.nomeCompleto ?? "",
-      cpf: cliente?.cpf ? maskCpf(cliente.cpf) : "",
-      dataNascimento: cliente?.dataNascimento
-        ? toLocalDateISO(cliente.dataNascimento)
+      nomeRazao: cliente?.nomeRazao ?? "",
+      cpfCnpj: cliente?.cpfCnpj ? maskCpf(cliente.cpfCnpj) : "",
+      nomeFantazia: cliente?.nomeFantazia ?? "",
+      dataNascimentoCriacao: cliente?.dataNascimentoCriacao
+        ? toLocalDateISO(cliente.dataNascimentoCriacao)
         : "",
     });
   }, [open, cliente, reset]);
 
-  const cpfValue = watch("cpf") ?? "";
+  const cpfCnpjValue = watch("cpfCnpj") ?? "";
 
   const submit = async (data: ClienteFormData) => {
     try {
       await onSubmit({
-        nomeCompleto: data.nomeCompleto.trim(),
-        cpf: data.cpf ? onlyDigits(data.cpf) : undefined,
-        dataNascimento: data.dataNascimento || undefined,
+        nomeRazao: data.nomeRazao.trim(),
+        cpfCnpj: onlyDigits(data.cpfCnpj),
+        nomeFantazia: data.nomeFantazia?.trim() || undefined,
+        dataNascimentoCriacao: data.dataNascimentoCriacao || undefined,
+        fornecedor: cliente?.fornecedor ?? fornecedorContext,
+        status: cliente?.status ?? true,
       });
       onClose();
     } catch (err) {
-      toast.error(extractApiError(err, "Erro ao salvar cliente"));
+      toast.error(extractApiError(err, "Erro ao salvar registro"));
     }
   };
 
@@ -68,44 +91,79 @@ export function ClienteFormModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={isEdit ? "Editar cliente" : "Novo cliente"}
+      title={titulo}
       description={
-        isEdit ? "Atualize os dados do cliente." : "Cadastre um novo cliente."
+        isEdit
+          ? "Atualize os dados do cadastro."
+          : "Preencha os dados para cadastrar."
       }
+      size="md"
     >
       <form
         id="cliente-form"
         onSubmit={handleSubmit(submit)}
         noValidate
-        className="space-y-4"
+        className="space-y-5"
       >
-        <Input
-          label="Nome completo *"
-          placeholder="João da Silva"
-          icon={<User className="w-5 h-5" />}
-          error={errors.nomeCompleto?.message}
-          {...register("nomeCompleto")}
-        />
+        <section>
+          <header className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-950/40 flex items-center justify-center">
+              <Building2 className="w-4 h-4 text-primary-600 dark:text-primary-400" />
+            </div>
+            <h3 className="text-sm font-semibold text-primary-900 dark:text-primary-100">
+              Identificação
+            </h3>
+          </header>
+          <div className="space-y-4">
+            <Input
+              label="Nome / Razão social *"
+              placeholder="Ex.: João da Silva ou ACME Ltda"
+              error={errors.nomeRazao?.message}
+              {...register("nomeRazao")}
+            />
+            <Input
+              label="CPF ou CNPJ *"
+              placeholder="000.000.000-00 ou 00.000.000/0000-00"
+              inputMode="numeric"
+              icon={<IdCard className="w-5 h-5" />}
+              error={errors.cpfCnpj?.message}
+              value={cpfCnpjValue}
+              onChange={(e) =>
+                setValue("cpfCnpj", maskCpfCnpj(e.target.value), {
+                  shouldValidate: false,
+                })
+              }
+              hint="CPF (11 dígitos) ou CNPJ (14 dígitos)"
+            />
+            <Input
+              label="Nome fantasia"
+              placeholder="Opcional — como é conhecido no mercado"
+              icon={<Sparkles className="w-5 h-5" />}
+              error={errors.nomeFantazia?.message}
+              {...register("nomeFantazia")}
+            />
+          </div>
+        </section>
 
-        <Input
-          label="CPF"
-          placeholder="000.000.000-00"
-          inputMode="numeric"
-          icon={<IdCard className="w-5 h-5" />}
-          error={errors.cpf?.message}
-          value={cpfValue}
-          onChange={(e) =>
-            setValue("cpf", maskCpf(e.target.value), { shouldValidate: false })
-          }
-        />
-
-        <Input
-          label="Data de nascimento"
-          type="date"
-          icon={<Calendar className="w-5 h-5" />}
-          error={errors.dataNascimento?.message}
-          {...register("dataNascimento")}
-        />
+        <section>
+          <header className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-950/40 flex items-center justify-center">
+              <Calendar className="w-4 h-4 text-primary-600 dark:text-primary-400" />
+            </div>
+            <h3 className="text-sm font-semibold text-primary-900 dark:text-primary-100">
+              {fornecedorContext
+                ? "Data de criação"
+                : "Data de nascimento / criação"}
+            </h3>
+          </header>
+          <Input
+            label={fornecedorContext ? "Criação" : "Nascimento / Criação"}
+            type="date"
+            icon={<Calendar className="w-5 h-5" />}
+            error={errors.dataNascimentoCriacao?.message}
+            {...register("dataNascimentoCriacao")}
+          />
+        </section>
       </form>
 
       <div className="flex gap-2 mt-6">
@@ -124,7 +182,7 @@ export function ClienteFormModal({
           loading={isSubmitting}
           loadingText="Salvando..."
         >
-          {isEdit ? "Salvar alterações" : "Criar cliente"}
+          {isEdit ? "Salvar alterações" : "Cadastrar"}
         </Button>
       </div>
     </Modal>

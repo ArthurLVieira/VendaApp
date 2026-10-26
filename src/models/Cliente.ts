@@ -36,7 +36,7 @@ export class Cliente extends Entity<RawCliente> {
       : this.cpfCnpj;
   }
 
-  get dataNascimentoCriacaoFormatado(): string {
+  get dataNascimentoCriacaoFormatada(): string {
     return this.dataNascimentoCriacao
       ? this.dataNascimentoCriacao.toLocaleDateString("pt-BR")
       : "—";
@@ -66,6 +66,10 @@ export class Cliente extends Entity<RawCliente> {
         .join("")
         .toUpperCase() || "?"
     );
+  }
+
+  get tipoDocumento(): "CPF" | "CNPJ" {
+    return this.cpfCnpj.replace(/\D/g, "").length === 14 ? "CNPJ" : "CPF";
   }
 
   static fromRaw(raw: RawCliente): Cliente {
