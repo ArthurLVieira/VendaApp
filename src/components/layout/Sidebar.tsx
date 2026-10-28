@@ -12,6 +12,7 @@ import {
   LogOut,
   X,
   type LucideIcon,
+  Truck,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import clsx from "clsx";
@@ -39,6 +40,7 @@ const SECTIONS: NavSection[] = [
       { label: "Vendas", to: "/dashboard/vendas", icon: ShoppingCart },
       { label: "Produtos", to: "/dashboard/produtos", icon: Package },
       { label: "Clientes", to: "/dashboard/clientes", icon: Users },
+      { label: "Fornecedores", to: "/dashboard/fornecedores", icon: Truck },
     ],
   },
   {
