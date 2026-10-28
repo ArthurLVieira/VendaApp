@@ -65,6 +65,9 @@ export function ClienteViewModal({
     }
   };
 
+  const tipoAtual = cliente.fornecedor ? "Fornecedor" : "cliente";
+  const tipoAlternativo = cliente.fornecedor ? "Cliente" : "fornecedor";
+
   return (
     <Modal
       open={open}
@@ -82,19 +85,20 @@ export function ClienteViewModal({
         </div>
       }
     >
+      {/* Cabeçalho */}
       <div className="flex items-start gap-4 mb-6">
         <div
           className="w-14 h-14 rounded-full bg-primary-100 dark:bg-primary-950/40
                         text-primary-700 dark:text-primary-300 flex items-center justify-center
                         text-lg font-bold shrink-0"
         >
-          {cliente?.iniciais}
+          {cliente.iniciais}
         </div>
         <div className="min-w-0 flex-1">
           <h2 className="text-lg font-bold text-primary-950 dark:text-primary-50 truncate">
-            {cliente?.nomeRazao}
+            {cliente.nomeRazao}
           </h2>
-          {cliente?.nomeFantazia && (
+          {cliente.nomeFantazia && (
             <p className="text-sm text-neutral-500 dark:text-neutral-400 truncate">
               {cliente.nomeFantazia}
             </p>
@@ -106,34 +110,35 @@ export function ClienteViewModal({
             <Badge tone={localFornecedor ? "info" : "neutral"}>
               {localFornecedor ? "Fornecedor" : "Cliente"}
             </Badge>
-            <Badge tone="primary">{cliente?.tipoDocumento}</Badge>
+            <Badge tone="primary">{cliente.tipoDocumento}</Badge>
           </div>
         </div>
       </div>
 
+      {/* Dados */}
       <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 divide-y divide-neutral-100 dark:divide-neutral-700">
         <InfoRow
           icon={<IdCard className="w-4 h-4" />}
-          label={cliente?.tipoDocumento ?? ""}
-          value={cliente?.cpfCnpjFormatado ?? ""}
+          label={cliente.tipoDocumento}
+          value={cliente.cpfCnpjFormatado}
         />
         <InfoRow
           icon={<Sparkles className="w-4 h-4" />}
           label="Nome fantasia"
-          value={cliente?.nomeFantazia || "—"}
+          value={cliente.nomeFantazia || "—"}
         />
         <InfoRow
           icon={<Calendar className="w-4 h-4" />}
           label="Nascimento / Criação"
           value={
-            cliente?.idade !== undefined
+            cliente.idade !== undefined
               ? `${cliente.dataNascimentoCriacaoFormatada} (${cliente.idade} anos)`
-              : (cliente?.dataNascimentoCriacaoFormatada ?? "")
+              : cliente.dataNascimentoCriacaoFormatada
           }
         />
       </div>
 
-      {/* Ações — toggles */}
+      {/* Toggles */}
       <div
         className="mt-6 space-y-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/40
                       border border-neutral-200 dark:border-neutral-700 p-4"
@@ -160,11 +165,15 @@ export function ClienteViewModal({
           checked={localFornecedor}
           onChange={() => void handleToggleFornecedor()}
           disabled={updatingFornecedor}
-          label={localFornecedor ? "Tornar cliente" : "Tornar fornecedor"}
+          label={
+            localFornecedor
+              ? `Tornar ${tipoAlternativo}`
+              : `Tornar ${tipoAlternativo}`
+          }
           description={
             localFornecedor
-              ? "O registro deixará de ser fornecedor e passará a ser cliente."
-              : "O registro deixará de ser cliente e passará a ser fornecedor."
+              ? "Este registro deixará de ser fornecedor e passará a ser cliente."
+              : "Este registro deixará de ser cliente e passará a ser fornecedor."
           }
         />
 
